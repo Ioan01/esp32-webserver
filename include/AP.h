@@ -4,7 +4,7 @@
 #include <HTML.h>
 namespace AP
 {
-
+    String json = String();
     const char *ssid = "asd";
 
     const char *password = "asdads";
@@ -18,36 +18,67 @@ namespace AP
     char *method = new char[8];
     char *route = new char[16];
 
+    static const char *falseTrue[] = {"false", "true"};
+
+    void scanWifi()
+    {
+
+        json.clear();
+
+        json += "{ \"networks:\" : [";
+
+        int count = WiFi.scanNetworks();
+
+        for (size_t i = 0; i < count; i++)
+        {
+            json += "{\"ssid\":\"" + WiFi.SSID(i) + "\",\"open\":" + falseTrue[WiFi.encryptionType(i) == WIFI_AUTH_OPEN] + "}";
+            if (i != count - 1)
+                json += ',';
+        }
+
+        json += "]}";
+
+        Serial.printf(json.c_str());
+    }
+
     void handleRoute(WiFiClient *client)
     {
         client->println("HTTP/1.1 200 OK");
+        client->println("Connection: close");
 
-        if (!strcmp(route, "/"))
+        if (!strcmp(route, "/") || !strcmp(route, "/?"))
         {
-            client->println("Connection: close");
             client->println("Content-type:text/html");
             client->println(HTML::apPage);
         }
         else if (!strcmp(route, "/sheet.css"))
         {
-            client->println("Connection: close");
             client->println("Cache-Control: max-age: 31536000, immutable");
             client->println("Content-type:text/css");
             client->println(HTML::styleSheet);
         }
         else if (!strcmp(route, "/jquery.js"))
         {
-            client->println("Connection: close");
             client->println("Cache-Control: max-age: 31536000, immutable");
             client->println("Content-type:text/javascript");
             client->println(HTML::jquery);
+        }
+        else if (!strcmp(route, "/script.js"))
+        {
+            client->println("Cache-Control: max-age: 31536000, immutable");
+            client->println("Content-type:text/javascript");
+            client->println(HTML::script);
         }
         // else if (!strcmp(route, ""))
         //{
 
         //}
-        else if (!strcmp(route, "/getAps"))
+        else if (!strcmp(route, "/scanAps"))
         {
+            scanWifi();
+            client->println("Content-type:application/json");
+            client->println();
+            client->println(json.c_str());
         }
 
         client->println();
@@ -114,8 +145,9 @@ namespace AP
 
     extern void start()
     {
-        pinMode(LED_BUILTIN, OUTPUT);
-        WiFi.mode(WIFI_AP);
+        json.reserve(512);
+
+        WiFi.mode(WIFI_AP_STA);
         WiFi.softAPConfig(IPAddress(192, 168, 0, 1), IPAddress(192, 168, 0, 1), IPAddress(255, 255, 255, 0));
         WiFi.softAP(ssid);
 
