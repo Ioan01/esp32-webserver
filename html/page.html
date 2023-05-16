@@ -3,10 +3,24 @@
 <html>
   <head>
     <link rel="stylesheet" href="sheet.css" />
-    <script src="jquery.js"></script>
     <script src="script.js"></script>
   </head>
-  <body>
+  <body id="body">
     <button onclick="scanAps();">Scan Networks</button>
+    <label id="loading" style="display: none">Loading...</label>
+    <label for="networks">Select Network</label>
+    <select id="networks" onchange="selectionChange(this)">
+      <input
+        type="password"
+        placeholder="ssid password"
+        id="passwordField"
+        style="display: none"
+        onchange="passwordChange()"
+      />
+
+      <button id="connectButton" onclick="connect()" style="display: none">
+        Connect
+      </button>
+    </select>
   </body>
 </html>

@@ -2,9 +2,14 @@
 #include <WebServer.h>
 #include <EEPROM.h>
 #include <HTML.h>
+
+#define TIMEOUT 5
 namespace AP
 {
     String json = String();
+
+    bool apMode = true;
+
     const char *ssid = "asd";
 
     const char *password = "asdads";
@@ -18,14 +23,52 @@ namespace AP
     char *method = new char[8];
     char *route = new char[16];
 
+    char *trySsid = new char[32];
+    char *tryPassword = new char[64];
+
     static const char *falseTrue[] = {"false", "true"};
+
+    bool checkConnection()
+    {
+
+        int counter = -1;
+
+        sscanf((const char *)buff + headerEnd + 1, "%s \\ %s \\", trySsid, tryPassword);
+
+        if (strlen(tryPassword) < 2)
+        {
+            Serial.printf("No password\n");
+            tryPassword = 0;
+        }
+
+        Serial.printf("Trying to connect to %s with password %s...\n", trySsid, tryPassword);
+
+        WiFi.begin(trySsid, tryPassword);
+
+        while (WiFi.status() != WL_CONNECTED)
+        {
+            counter++;
+            delay(100);
+            if (counter == TIMEOUT * 10)
+            {
+                Serial.printf("Failed to connect after %d awaits.", counter);
+                return false;
+            }
+        }
+
+        WiFi.disconnect();
+
+        apMode = false;
+
+        return true;
+    }
 
     void scanWifi()
     {
 
         json.clear();
 
-        json += "{ \"networks:\" : [";
+        json += "{ \"networks\" : [";
 
         int count = WiFi.scanNetworks();
 
@@ -43,6 +86,23 @@ namespace AP
 
     void handleRoute(WiFiClient *client)
     {
+        if (!strcmp(route, "/connect"))
+        {
+            if (checkConnection())
+            {
+                client->println("HTTP/1.1 200 OK");
+                client->println("Connection: close");
+                client->println();
+            }
+            else
+            {
+                client->println("HTTP/1.1 400 Bad Request");
+                client->println("Connection: close");
+                client->println();
+            }
+            return;
+        }
+
         client->println("HTTP/1.1 200 OK");
         client->println("Connection: close");
 
@@ -57,12 +117,6 @@ namespace AP
             client->println("Content-type:text/css");
             client->println(HTML::styleSheet);
         }
-        else if (!strcmp(route, "/jquery.js"))
-        {
-            client->println("Cache-Control: max-age: 31536000, immutable");
-            client->println("Content-type:text/javascript");
-            client->println(HTML::jquery);
-        }
         else if (!strcmp(route, "/script.js"))
         {
             client->println("Cache-Control: max-age: 31536000, immutable");
@@ -73,6 +127,13 @@ namespace AP
         //{
 
         //}
+        else if (!strcmp(route, "/scanAps"))
+        {
+            scanWifi();
+            client->println("Content-type:application/json");
+            client->println();
+            client->println(json.c_str());
+        }
         else if (!strcmp(route, "/scanAps"))
         {
             scanWifi();
@@ -107,7 +168,7 @@ namespace AP
         {
             if (client->available())
             {
-                messageEnd = client->available() - 1;
+                messageEnd = client->available();
                 client->read(buff, messageEnd);
                 determineLimits();
 
@@ -130,7 +191,7 @@ namespace AP
     void apLoop(void *params)
     {
 
-        while (true)
+        while (apMode)
         {
             WiFiClient client = server.available();
 
@@ -139,6 +200,20 @@ namespace AP
 
             delay(100);
         }
+
+        WiFi.softAPdisconnect();
+        WiFi.mode(WIFI_STA);
+        Serial.println("Switched to STA mode");
+
+        Serial.printf("Connecting to %s\n", trySsid);
+
+        WiFi.begin(trySsid, tryPassword);
+        while (WiFi.status() != WL_CONNECTED)
+        {
+            delay(100);
+        }
+
+        Serial.printf("Connected at %s\n", WiFi.localIP().toString().c_str());
 
         vTaskDelete(NULL);
     }
