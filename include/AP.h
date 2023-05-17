@@ -33,7 +33,7 @@ namespace AP
 
         int counter = -1;
 
-        sscanf((const char *)buff + headerEnd + 1, "%s \\ %s \\", trySsid, tryPassword);
+        sscanf((const char *)buff + headerEnd + 1, "%[a-zA-Z0-9_ !@#$%^&*(]\\%[a-zA-Z0-9_ !@#$%^&*(]", trySsid, tryPassword);
 
         if (strlen(tryPassword) < 2)
         {
@@ -168,7 +168,7 @@ namespace AP
         {
             if (client->available())
             {
-                messageEnd = client->available();
+                messageEnd = client->available() - 1;
                 client->read(buff, messageEnd);
                 determineLimits();
 
