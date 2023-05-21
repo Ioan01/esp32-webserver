@@ -4,11 +4,18 @@ var ssid = "";
 
 var password = "";
 
+var ip = "";
+
 function scanAps() {
     document.getElementById("passwordField").style.display = "none";
     document.getElementById("connectButton").style.display = "none";
     document.getElementById("loading").style.display = "none";
     document.getElementById("passwordField").value = "";
+
+
+    document.getElementById("ipField").style.display = "none";
+    document.getElementById("ipField").value = "";
+
 
     const xhr = new XMLHttpRequest();
     document.getElementById("loading").style.display = "block";
@@ -33,6 +40,9 @@ function scanAps() {
                     if (networks[0].open === false) {
                         document.getElementById("passwordField").value = "";
                         document.getElementById("passwordField").style.display = "inline";
+
+                        document.getElementById("ipField").value = "";
+                        document.getElementById("ipField").style.display = "inline";
                     }
 
                     ssid = networks[0].ssid;
@@ -63,7 +73,7 @@ function connect() {
     if (document.getElementById("connection") != null)
         document.getElementById("connection").remove();
 
-    xhr.send(`${ssid} \\ ${password} \\`);
+    xhr.send(`${ssid}\\${password}\\${ip}\\`);
     xhr.responseType = "json";
     xhr.onload = () => {
         document.getElementById("loading").style.display = "none";
@@ -90,10 +100,17 @@ function selectionChange(select) {
     if (networks[select.selectedIndex].open === false) {
         document.getElementById("passwordField").value = "";
         document.getElementById("passwordField").style.display = "inline";
+
+        document.getElementById("ipField").value = "";
+        document.getElementById("ipField").style.display = "inline";
     }
     else password = '';
 }
 
 function passwordChange() {
     password = document.getElementById("passwordField").value;
+}
+
+function ipChange() {
+    ip = document.getElementById("ipField").value;
 }

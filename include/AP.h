@@ -2,6 +2,7 @@
 #include <WebServer.h>
 #include <EEPROM.h>
 #include <HTML.h>
+#include <MQTT.h>
 
 #define TIMEOUT 5
 namespace AP
@@ -23,8 +24,8 @@ namespace AP
     char *method = new char[8];
     char *route = new char[16];
 
-    char *trySsid = new char[32];
-    char *tryPassword = new char[64];
+    char *trySsid = new char[MAX_LEN];
+    char *tryPassword = new char[MAX_LEN];
 
     static const char *falseTrue[] = {"false", "true"};
 
@@ -33,7 +34,7 @@ namespace AP
 
         int counter = -1;
 
-        sscanf((const char *)buff + headerEnd + 1, "%[a-zA-Z0-9_ !@#$%^&*(]\\%[a-zA-Z0-9_ !@#$%^&*(]", trySsid, tryPassword);
+        sscanf((const char *)buff + headerEnd + 1, "%[a-zA-Z0-9_ !@#$%^&*(]\\%[a-zA-Z0-9_ !@#$%^&*(]\\%[a-zA-Z0-9_ !@#$%^&*(.]\\", trySsid, tryPassword, CONFIG::mqttServer);
 
         if (strlen(tryPassword) < 2)
         {
@@ -168,8 +169,10 @@ namespace AP
         {
             if (client->available())
             {
-                messageEnd = client->available() - 1;
+                messageEnd = client->available();
                 client->read(buff, messageEnd);
+                buff[messageEnd - 1] = 0;
+
                 determineLimits();
 
                 Serial.println(headerEnd);
@@ -180,6 +183,7 @@ namespace AP
                 Serial.write(buff, headerEnd);
                 Serial.println("------");
                 Serial.write(buff + headerEnd + 1, messageEnd - headerEnd);
+                Serial.println();
 
                 handleRoute(client);
                 break;
@@ -215,6 +219,18 @@ namespace AP
 
         Serial.printf("Connected at %s\n", WiFi.localIP().toString().c_str());
 
+        CONFIG::pref.begin("config", false);
+
+        CONFIG::pref.putBytes("ssid", trySsid, MAX_LEN);
+
+        CONFIG::pref.putBytes("password", tryPassword, MAX_LEN);
+
+        CONFIG::pref.putBytes("mqttServer", CONFIG::mqttServer, MAX_LEN);
+
+        CONFIG::pref.end();
+
+        MQTT::start();
+
         vTaskDelete(NULL);
     }
 
@@ -228,7 +244,6 @@ namespace AP
 
         Serial.println(WiFi.softAPIP());
         server.begin();
-        Serial.begin(9600);
 
         xTaskCreate(apLoop, "aploop", 8192, 0, tskIDLE_PRIORITY, 0);
     }

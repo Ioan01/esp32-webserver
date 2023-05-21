@@ -1,84 +1,77 @@
 #include <EEPROM.h>
+#include <Preferences.h>
 
-namespace CONFIG {
+#define SSID_PASSWORD_ADDRESS 0
+#define MAX_LEN 32
+#define MASK 179
 
-    #define SSID_PASSWORD_ADDRESS 0
-    #define MAX_LEN 32
-    #define MASK 179
+namespace CONFIG
+{
 
+    Preferences pref;
 
-    uint8_t* ssid = new uint8_t[MAX_LEN];
-    uint8_t* password = new uint8_t[MAX_LEN];
+    char *ssid = new char[MAX_LEN];
+    char *password = new char[MAX_LEN];
+
+    char *mqttServer = new char[MAX_LEN];
 
     bool foundPassword = 0;
     bool foundSSID = 0;
+
+    bool connected = 0;
 
     void tryConnect()
     {
         WiFi.mode(WIFI_STA);
 
-        Serial.printf("Connecting to %s\n",ssid);
-        WiFi.begin((char*)ssid ,(char*)password);
+        Serial.printf("Connecting to %s\n", ssid);
+        WiFi.begin(ssid, password);
+        int timeout = 0;
+        while (timeout < 50 && WiFi.status() != WL_CONNECTED)
+        {
+            timeout++;
+            delay(100);
+        }
 
         switch (WiFi.status())
         {
-            case WL_CONNECTED:
-                Serial.println("Connected!");
+        case WL_CONNECTED:
+            Serial.println("Connected!");
+            connected = 1;
+
             break;
-            default:
-                Serial.println("Failed to connect.");
+        default:
+            Serial.println("Failed to connect.");
+            WiFi.disconnect();
+
+            WiFi.mode(WIFI_MODE_NULL);
             break;
         }
-        
     }
 
-
-    extern void initialize()
+    void initialize()
     {
-        Serial.println("Trying to find password and username..."); 
+        Serial.println("Trying to find password and username...");
+        pref.begin("config", true);
 
-        uint8_t index = 0;
+        size_t readSsid = pref.getBytes("ssid", ssid, MAX_LEN);
+        pref.getBytes("password", password, MAX_LEN);
+        pref.getBytes("mqttServer", mqttServer, MAX_LEN);
 
-        int address = SSID_PASSWORD_ADDRESS;
+        pref.end();
 
-        // try to read ssid
-        do
-        {
-            ssid[index] = EEPROM.read(address++);
-            ssid[index] ^= MASK;
-        } while (ssid[index++] && index < MAX_LEN);
+        if (readSsid > 0)
+            tryConnect();
+    }
 
-        if (ssid[0] == 0)
-        {
-            Serial.println("No SSID found. Exiting config.");
-            delete ssid;
-            delete password;
-            return;
-        }
-        foundSSID = 1;
+    void clear()
+    {
+        pref.begin("config", false);
 
-        index = 0;
+        pref.remove("ssid");
+        pref.remove("password");
+        pref.remove("mqttServer");
 
-        Serial.printf("Found SSID : %s\n",ssid);
-
-        // try to read password
-        do
-        {
-            password[index] = EEPROM.read(address++);
-            password[index] ^= MASK;
-        } while (password[index++] && index < MAX_LEN);
-
-        if (password[0] == 0)
-        {
-            Serial.println("No Password found. Exiting config.");
-            delete password;
-            password = 0;
-        }
-        else {
-            foundPassword = true;
-            Serial.printf("Found SSID : %s\n",password);
-        }
-
-        tryConnect();
+        pref.end();
     }
 }
