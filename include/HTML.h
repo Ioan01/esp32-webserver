@@ -22,8 +22,8 @@ namespace HTML
       />
 
       <input
-        type="text"
-        placeholder="raspberry pi ip"
+        type="password"
+        placeholder="Server Ip Address"
         id="ipField"
         style="display: none"
         onchange="ipChange()"
