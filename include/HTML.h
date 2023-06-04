@@ -22,7 +22,7 @@ namespace HTML
       />
 
       <input
-        type="password"
+        type="text"
         placeholder="Server Ip Address"
         id="ipField"
         style="display: none"

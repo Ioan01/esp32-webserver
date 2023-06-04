@@ -43,13 +43,13 @@ namespace MQTT
         else if (!strcmp(topic, "start"))
         {
             if (!strcmp(messageBuff, CONFIG::id))
-                DRIVER::running = 1;
+                DRIVER::startCamera();
         }
 
         else if (!strcmp(topic, "stop"))
         {
             if (!strcmp(messageBuff, CONFIG::id))
-                DRIVER::running = 0;
+                DRIVER::stopCamera();
         }
     }
 
@@ -59,6 +59,7 @@ namespace MQTT
 
         while (!mqttClient.connected())
         {
+            DRIVER::running = false;
             Serial.print("Attempting MQTT connection...");
             // Attempt to connect
             if (mqttClient.connect("espClient", "mqtt-test", "mqtt-test"))

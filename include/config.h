@@ -7,7 +7,7 @@
 
 namespace CONFIG
 {
-    const char *id = "one";
+    const char *id = "two";
     Preferences pref;
 
     char *ssid = new char[MAX_LEN];
